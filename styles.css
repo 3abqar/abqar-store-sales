@@ -1,0 +1,272 @@
+/* ============================================
+  Custom CSS for Digital Sales Tracker
+  ============================================
+*/
+
+/* 1. CSS Variables (Root)
+  ------------------------------------
+  Defining the main color palette for the application.
+*/
+:root {
+  --primary: #4a90e2; /* Main blue color */
+  --secondary: #f5f7fa; /* Light gray for backgrounds */
+  --accent: #7ed321; /* Green for positive indicators */
+  --text: #333333; /* Default dark text color */
+  --dark-bg-start: #2d3748; /* Dark mode gradient start */
+  --dark-bg-end: #1a202c;   /* Dark mode gradient end */
+  --light-bg-start: #f5f7fa; /* Light mode gradient start */
+  --light-bg-end: #c3cfe2;   /* Light mode gradient end */
+}
+
+/* 2. Body and Font Styles
+  ------------------------------------
+  Setting new fonts and a gradient background for a modern look.
+*/
+body {
+  font-family: "Cairo", sans-serif; /* Using Cairo for better Arabic support */
+  color: var(--text);
+  background: linear-gradient(170deg, var(--light-bg-start) 0%, var(--light-bg-end) 100%);
+  transition: background-color 0.5s ease;
+}
+
+h1,
+h2,
+h3,
+h4,
+button {
+  font-family: "Montserrat", sans-serif; /* Montserrat for headings for a clean look */
+}
+
+/* 3. Header and Logo Styling
+  ------------------------------------
+  New styles to make the header and logo more prominent.
+*/
+header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.logo-img {
+  height: 48px;
+  width: 48px;
+  border-radius: 9999px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  border: 2px solid white;
+  object-fit: cover; /* Prevents image distortion */
+}
+
+.control-btn {
+    padding: 0.5rem;
+    border-radius: 9999px;
+    transition: background-color 0.2s ease-in-out;
+}
+.control-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+.dark-mode .control-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+
+/* 4. Navigation Link Style
+  ------------------------------------
+  This style adds a blue bottom border to the active tab.
+*/
+.nav-link {
+    transition: color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+.nav-link.active {
+  color: var(--primary);
+  border-bottom: 3px solid var(--primary);
+}
+
+/* 5. Card Styling
+  ------------------------------------
+  A subtle transition for cards to lift up on hover, giving a sense of depth.
+*/
+.stat-card {
+  border: 1px solid rgba(0, 0, 0, 0.02);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease-in-out;
+  background-color: rgba(255, 255, 255, 0.5); /* Semi-transparent background */
+  backdrop-filter: blur(10px); /* Frosted glass effect */
+}
+
+.stat-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.08);
+}
+
+/* 6. Form Input Focus Style
+  ------------------------------------
+  Custom focus style for form elements.
+*/
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.3);
+}
+
+/* 7. Dark Mode Styles
+  ------------------------------------
+  Overrides for dark mode with a new gradient background.
+*/
+.dark-mode {
+  background: linear-gradient(170deg, var(--dark-bg-start) 0%, var(--dark-bg-end) 100%);
+  color: #e2e8f0;
+}
+
+.dark-mode .stat-card {
+    background-color: rgba(45, 55, 72, 0.5); /* Darker semi-transparent bg */
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .bg-white {
+  background-color: #2d3748;
+}
+
+.dark-mode .text-gray-800 {
+  color: #e2e8f0;
+}
+
+.dark-mode .border-gray-200 {
+  border-color: #4a5568;
+}
+
+/* 8. VIP Badge Style
+  ------------------------------------
+  A custom badge for VIP customers.
+*/
+.vip-badge {
+  background-color: #ffd700;
+  color: #000;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* 9. AI Report Prose Styles
+  ------------------------------------
+  Ensures correct text color for AI-generated report.
+*/
+.prose h1,
+.prose h2,
+.prose h3 {
+  color: inherit;
+}
+
+/* 10. Action Button Styles
+  ------------------------------------ 
+  Adds spacing and a more defined look to action buttons in tables.
+*/
+.edit-btn, .delete-btn, .details-btn, .mark-paid-btn {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  margin-left: 6px; 
+  cursor: pointer;
+}
+
+td > .edit-btn:first-child,
+td > .details-btn:first-child,
+td > .mark-paid-btn:first-child {
+    margin-left: 0;
+}
+
+.edit-btn {
+  background-color: transparent;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.edit-btn:hover {
+  background-color: var(--primary);
+  color: white;
+}
+
+.delete-btn {
+  background-color: transparent;
+  border-color: #dc2626;
+  color: #dc2626;
+}
+.delete-btn:hover {
+  background-color: #dc2626;
+  color: white;
+}
+
+.details-btn {
+    background-color: transparent;
+    border-color: #6b7280;
+    color: #6b7280;
+}
+.details-btn:hover {
+    background-color: #6b7280;
+    color: white;
+}
+.dark-mode .details-btn {
+    border-color: #9ca3af;
+    color: #9ca3af;
+}
+.dark-mode .details-btn:hover {
+    background-color: #9ca3af;
+    color: #1a202c;
+}
+
+.mark-paid-btn {
+    background-color: transparent;
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.mark-paid-btn:hover {
+    background-color: var(--accent);
+    color: white;
+}
+
+
+/* 11. Mobile Responsiveness
+  ------------------------------------ 
+  Improves layout on smaller screens.
+*/
+@media (max-width: 768px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .min-w-full .px-6 {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  .min-w-full .text-xs {
+    font-size: 0.7rem; 
+  }
+   .min-w-full .text-sm {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+    td.text-right {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .edit-btn, .delete-btn, .details-btn, .mark-paid-btn {
+        width: 100%;
+        text-align: center;
+        margin-left: 0;
+    }
+}
