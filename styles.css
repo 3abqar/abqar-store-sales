@@ -336,3 +336,16 @@ textarea:focus {
     border-bottom-color: rgba(255, 255, 255, 0.1);
   }
 }
+/* حلول نهائية لألوان النصوص في الوضع الليلي */
+.dark-mode .text-gray-900,
+.dark-mode .text-gray-700,
+.dark-mode .text-gray-500,
+.dark-mode .text-black,
+.dark-mode .text-gray-800 {
+  color: var(--dark-text) !important;
+}
+
+/* لو في جزء معين مش عايزه يتغير لونه في الوضع الليلي أضف له كلاس استثنائي زي: .keep-dark-color */
+.dark-mode .keep-dark-color {
+  color: #1f2937 !important; /* أو أي لون مناسب */
+}
