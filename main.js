@@ -1,11 +1,13 @@
-// main.js
+// main.js - الكود الكامل والنهائي
+
 import { db, auth, salesCollection, customersCollection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, getDoc, setDoc, query, onAuthStateChanged, signInAnonymously } from './firebase.js';
 import * as UI from './ui.js';
+import { addAuditLog, listenToAuditLogs } from './auditLog.js';
 
 // --- Global Variables ---
 let salesData = [];
 let customersData = {};
-let currentLanguage = "en";
+let currentLanguage = "ar";
 let dailyGoal = 5000;
 let currentSalesPage = 1;
 let currentCustomerPage = 1;
@@ -13,7 +15,7 @@ const rowsPerPage = 10;
 let customerSearchTerm = '';
 let filteredSales = null;
 let reminders = JSON.parse(localStorage.getItem('reminders') || '{}');
-let recentActivities = JSON.parse(localStorage.getItem('recentActivities') || '[]');
+let recentActivities = [];
 let notifications = [];
 
 // --- TRANSLATION DATA ---
@@ -26,13 +28,11 @@ const translations = {
     debt_management: "Debt Management",
     reports: "Reports & Tools",
     export: "Export",
-    todays_revenue: "Today's Revenue", from_yesterday: "from yesterday",
-    weekly_revenue: "Weekly Revenue", from_last_week: "from last week",
-    monthly_revenue: "Monthly Revenue", from_last_month: "from last month",
+    monthly_revenue: "Monthly Revenue",
     top_selling_service: "Top Selling Service",
     profit_by_date: "Profit by Date",
     total_debt: "Total Debt",
-    daily_goal: "Daily Goal", of_goal_text: "of EGP goal",
+    daily_goal: "Daily Goal", daily_goal_sentence: "% of profit goal",
     profit_margin: "Profit Margin",
     sales_by_service_type: "Sales by Service Type",
     monthly_sales_trend: "Monthly Sales Trend",
@@ -44,11 +44,11 @@ const translations = {
     whatsapp_number: "WhatsApp Number (Optional)", payment_status: "Payment Status",
     paid: "Paid", unpaid: "Unpaid", notes: "Notes (Optional)", save_sale: "Save Sale",
     sales_history: "Sales History", profit: "Profit", status: "Status",
+
     no_sales_records_found: "No sales records found",
     customer_database: "Customer Database", customer: "Customer", whatsapp: "WhatsApp",
     last_purchase: "Last Purchase", total_orders: "Total Orders", total_spent: "Total Spent",
     no_customer_records_found: "No customer records found",
-
     unpaid_orders: "Unpaid Orders", amount_due: "Amount Due", no_unpaid_orders: "No unpaid orders",
     notification: "Notification",
     delete_sale_title: "Delete Sale", delete_sale_message: "Are you sure you want to delete this sale? This action cannot be undone.",
@@ -76,7 +76,6 @@ const translations = {
     next: "Next",
     previous: "Previous",
     reminders: "Reminders",
-    recent_activity: "Recent Activity",
     audit_log: "Audit Log",
     pdf_reports: "PDF Reports",
     sales_pdf: "Sales PDF",
@@ -100,9 +99,7 @@ const translations = {
     debt_management: "إدارة الديون",
     reports: "تقارير وأدوات",
     export: "تصدير",
-    todays_revenue: "إيرادات اليوم", from_yesterday: "عن أمس",
-    weekly_revenue: "إيرادات الأسبوع", from_last_week: "عن الأسبوع الماضي",
-    monthly_revenue: "إيرادات الشهر", from_last_month: "عن الشهر الماضي",
+    monthly_revenue: "إيرادات الشهر",
     top_selling_service: "الخدمة الأكثر مبيعاً",
     profit_by_date: "أرباح حسب اليوم",
     total_debt: "إجمالي الديون",
@@ -122,7 +119,6 @@ const translations = {
     customer_database: "قاعدة بيانات العملاء", customer: "العميل", whatsapp: "واتساب",
     last_purchase: "آخر عملية شراء", total_orders: "إجمالي الطلبات", total_spent: "إجمالي الإنفاق",
     no_customer_records_found: "لم يتم العثور على سجلات عملاء",
-    
     unpaid_orders: "الطلبات غير المدفوعة", amount_due: "المبلغ المستحق", no_unpaid_orders: "لا توجد طلبات غير مدفوعة",
     notification: "إشعار",
     delete_sale_title: "حذف عملية البيع", delete_sale_message: "هل أنت متأكد أنك تريد حذف هذا البيع؟ لا يمكن التراجع عن هذا الإجراء.",
@@ -150,7 +146,6 @@ const translations = {
     next: "التالي",
     previous: "السابق",
     reminders: "تذكيرات",
-    recent_activity: "آخر الأنشطة",
     audit_log: "سجل التدقيق",
     pdf_reports: "تقارير PDF",
     sales_pdf: "تقرير المبيعات PDF",
@@ -180,7 +175,7 @@ document.addEventListener("DOMContentLoaded", () => {
             document.body.classList.add("dark-mode");
         }
         
-        currentLanguage = localStorage.getItem("language") || "ar"; // Default to Arabic
+        currentLanguage = localStorage.getItem("language") || "ar";
         dailyGoal = parseFloat(localStorage.getItem("dailyGoal")) || 5000;
         
         UI.setCurrentLanguage(currentLanguage);
@@ -190,12 +185,16 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("profitDateSelector").valueAsDate = new Date();
 
         setupEventListeners();
-        UI.updateActivityList(recentActivities);
         checkRemindersOnLoad();
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 loadDataAndSetupRealtimeListener();
+                UI.initializeAuditLog();
+                listenToAuditLogs((logs) => {
+                    recentActivities = logs;
+                    UI.updateActivityList(logs);
+                });
             } else {
                 signInAnonymously(auth).catch((error) => UI.handleLoadingErrorUI(error));
             }
@@ -206,25 +205,47 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function loadDataAndSetupRealtimeListener() {
+    // يستمع لتغييرات المبيعات بذكاء
     onSnapshot(query(salesCollection), (snapshot) => {
-        salesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        snapshot.docChanges().forEach((change) => {
+            const sale = { id: change.doc.id, ...change.doc.data() };
+            const index = salesData.findIndex(s => s.id === change.doc.id);
+
+            if (change.type === "added") {
+                if (index === -1) salesData.push(sale);
+            }
+            if (change.type === "modified") {
+                if (index > -1) salesData[index] = sale;
+            }
+            if (change.type === "removed") {
+                if (index > -1) salesData.splice(index, 1);
+            }
+        });
+
         salesData.sort((a, b) => new Date(b.date) - new Date(a.date));
+        updateAllViews();
+
+    }, (error) => UI.handleLoadingErrorUI(error));
+
+    // يستمع لتغييرات العملاء بشكل منفصل
+    onSnapshot(query(customersCollection), (custSnapshot) => {
+        custSnapshot.docChanges().forEach((change) => {
+            if (change.type === "removed") {
+                delete customersData[change.doc.id];
+            } else {
+                customersData[change.doc.id] = { id: change.doc.id, ...change.doc.data() };
+            }
+        });
         
-        onSnapshot(query(customersCollection), (custSnapshot) => {
-            const customerDocs = {};
-            custSnapshot.forEach(doc => {
-                customerDocs[doc.id] = { id: doc.id, ...doc.data() };
-            });
-            customersData = customerDocs;
-            updateCustomerAggregates();
-            updateAllViews();
-            UI.hideLoadingOverlay();
-        }, (error) => UI.handleLoadingErrorUI(error));
+        updateAllViews();
+        UI.hideLoadingOverlay();
 
     }, (error) => UI.handleLoadingErrorUI(error));
 }
 
 function updateAllViews() {
+  updateCustomerAggregates();
+  
   updateSalesTable();
   updateCustomerTable();
   UI.renderDebtManagement(salesData, markAsPaid);
@@ -252,7 +273,7 @@ function updateCustomerTable() {
     }).sort((a,b)=> new Date(b.lastPurchase || 0) - new Date(a.lastPurchase || 0));
     const totalPages = Math.ceil(arr.length / rowsPerPage) || 1;
     if (currentCustomerPage > totalPages) currentCustomerPage = totalPages;
-    const start = (currentCustomerPage -1)*rowsPerPage;
+    const start = (currentCustomerPage - 1) * rowsPerPage;
     const paged = arr.slice(start, start + rowsPerPage);
     UI.renderCustomerDatabase(paged, showCustomerDetails, {currentPage: currentCustomerPage, totalPages}, (p)=>{ currentCustomerPage = p; updateCustomerTable(); }, quickCreateOrder);
 }
@@ -263,16 +284,13 @@ function quickCreateOrder(name, number) {
     document.getElementById('whatsappNumber').value = number || '';
 }
 
-function addActivity(text) {
-    recentActivities.unshift({
-        text,
-        timestamp: Date.now(),
+function addActivity(text, extra = {}) {
+    addAuditLog({
+        action: text,
         user: auth.currentUser ? auth.currentUser.uid : 'anonymous',
-        device: navigator.userAgent
+        device: navigator.userAgent,
+        ...extra
     });
-    recentActivities = recentActivities.slice(0,10);
-    localStorage.setItem('recentActivities', JSON.stringify(recentActivities));
-    UI.updateActivityList(recentActivities);
 }
 
 function addCustomerReminder(whatsapp, date, text) {
@@ -330,17 +348,22 @@ function checkNotifications() {
 }
 
 function setupEventListeners() {
-  // Tab Navigation
   document.querySelectorAll(".nav-link").forEach((link) => {
     link.addEventListener("click", function () {
       document.querySelectorAll(".nav-link").forEach((l) => l.classList.remove("active"));
       this.classList.add("active");
       document.querySelectorAll(".tab-content").forEach((content) => content.classList.add("hidden"));
       document.getElementById(this.dataset.tab).classList.remove("hidden");
+        const links = document.getElementById('navLinks');
+        if (window.innerWidth < 768 && links.classList.contains('max-h-96')) {
+            links.classList.add('max-h-0');
+            links.classList.remove('max-h-96');
+            const arrow = document.getElementById('mobileMenuArrow');
+            if (arrow) arrow.classList.remove('rotate-180');
+        }
     });
   });
 
-  // Main Actions
   document.getElementById("salesForm").addEventListener("submit", handleSaveSale);
   document.getElementById('darkmode-toggle').addEventListener('change', handleDarkModeToggle);
   document.getElementById("languageToggle").addEventListener("click", handleLanguageToggle);
@@ -368,16 +391,25 @@ function setupEventListeners() {
           document.getElementById('mobileMenuArrow').classList.toggle('rotate-180');
       });
   }
-  document.getElementById('activityToggle').addEventListener('click', ()=>{ document.getElementById('activityPanel').classList.toggle('translate-x-full'); });
-  document.getElementById('closeActivity').addEventListener('click', ()=>{ document.getElementById('activityPanel').classList.add('translate-x-full'); });
+    const activityOverlay = document.getElementById('activityOverlay');
+    document.getElementById('activityToggle').addEventListener('click', ()=>{
+        document.getElementById('activityPanel').classList.remove('translate-x-full');
+        if (activityOverlay) activityOverlay.classList.remove('hidden');
+    });
+    document.getElementById('closeActivity').addEventListener('click', ()=>{
+        document.getElementById('activityPanel').classList.add('translate-x-full');
+        if (activityOverlay) activityOverlay.classList.add('hidden');
+    });
+    if (activityOverlay) activityOverlay.addEventListener('click', () => {
+        document.getElementById('activityPanel').classList.add('translate-x-full');
+        activityOverlay.classList.add('hidden');
+    });
 
-  // Modals Close Buttons
   document.getElementById("closeNotification").addEventListener("click", () => document.getElementById("notification").classList.add("-translate-x-full"));
   document.getElementById("cancelDeleteBtn").addEventListener("click", UI.hideDeleteConfirmationUI);
   document.getElementById("closeCustomerModalBtn").addEventListener("click", UI.hideCustomerDetailsUI);
   document.getElementById("closeCustomerModalBtn2").addEventListener("click", UI.hideCustomerDetailsUI);
 
-  // Reports & Tools Event Listeners
   document.getElementById('generatePlReportBtn').addEventListener('click', generatePLReport);
   document.getElementById('filterInactiveBtn').addEventListener('click', filterInactiveCustomers);
   document.getElementById('copyNumbersBtn').addEventListener('click', copyInactiveNumbers);
@@ -413,11 +445,11 @@ async function handleSaveSale(e) {
     if (editingId) {
       await updateDoc(doc(db, "sales", editingId), saleData);
       UI.showNotification("Sale updated successfully!", "success");
-      addActivity(`Sale updated for ${saleData.clientName}`);
+        addActivity(`Sale updated for ${saleData.clientName}`, { amount: saleData.price, client: saleData.clientName });
     } else {
       await addDoc(salesCollection, saleData);
       UI.showNotification("Sale saved successfully!", "success");
-      addActivity(`Sale added for ${saleData.clientName}`);
+        addActivity(`Sale added for ${saleData.clientName}`, { amount: saleData.price, client: saleData.clientName });
     }
 
     if (saleData.whatsappNumber) {
@@ -474,6 +506,10 @@ async function markAsPaid(saleId) {
     try {
         await updateDoc(doc(db, "sales", saleId), { paymentStatus: "paid" });
         UI.showNotification("Order marked as paid", "success");
+        const sale = salesData.find(s => s.id === saleId);
+        if (sale) {
+            addActivity(`Payment received for ${sale.clientName}`, { amount: sale.price, client: sale.clientName });
+        }
     } catch (error) {
         console.error("Error marking as paid: ", error);
         UI.showNotification("Error updating order.", "error");
@@ -684,7 +720,6 @@ function exportCustomersPDF() {
     doc.save('customers_report.pdf');
 }
 
-// --- P&L Reports ---
 function generatePLReport() {
     const period = document.getElementById('plReportPeriod').value;
     const now = new Date();
@@ -705,7 +740,6 @@ function generatePLReport() {
     UI.updatePLReportResult(period, income, expenses, net);
 }
 
-// --- WhatsApp Marketing Tool ---
 function filterInactiveCustomers() {
     const days = parseInt(document.getElementById('inactivityDays').value) || 30;
     const threshold = Date.now() - days * 24 * 60 * 60 * 1000;
@@ -731,7 +765,6 @@ function exportInactiveNumbers() {
     exportData(numbers, 'inactive_customers.csv');
 }
 
-// --- Financial Tools ---
 function simulateGoal() {
     const goal = parseFloat(document.getElementById('profitGoalInput').value);
     if (!goal) {

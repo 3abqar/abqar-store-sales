@@ -1,9 +1,9 @@
-// firebase.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, getDoc, setDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+// firebase.js - الكود الجديد
 
-// YOUR FIREBASE CONFIGURATION
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, getDoc, setDoc, query, orderBy, serverTimestamp } from "firebase/firestore";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
+
 const firebaseConfig = {
   apiKey: "AIzaSyCZ0j398VfiI0rrXf5VyQ6qUr4iKFBPW4s",
   authDomain: "abqar-store.firebaseapp.com",
@@ -23,18 +23,8 @@ const salesCollection = collection(db, 'sales');
 const customersCollection = collection(db, 'customers');
 
 export {
-  db,
-  auth,
-  salesCollection,
-  customersCollection,
-  onSnapshot,
-  addDoc,
-  doc,
-  deleteDoc,
-  updateDoc,
-  getDoc,
-  setDoc,
-  query,
-  onAuthStateChanged,
-  signInAnonymously
+  db, auth, salesCollection, customersCollection, onSnapshot, addDoc, doc,
+  deleteDoc, updateDoc, getDoc, setDoc, query, onAuthStateChanged,
+  signInAnonymously, orderBy, serverTimestamp,
+  collection
 };
