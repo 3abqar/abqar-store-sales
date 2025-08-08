@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // auditLog.js
 import { 
   db, 
@@ -26,3 +27,33 @@ export function listenToAuditLogs(callback) {
     callback(logs);
   });
 }
+=======
+// auditLog.js
+import { 
+  db, 
+  collection, 
+  doc, 
+  setDoc, 
+  onSnapshot, 
+  query, 
+  orderBy, 
+  serverTimestamp 
+} from "./firebase.js";
+// إضافة سجل جديد
+export async function addAuditLog(data) {
+  const id = Date.now().toString(); // ID فريد
+  await setDoc(doc(db, "auditLogs", id), {
+    ...data,
+    timestamp: serverTimestamp(),
+  });
+}
+
+// الاستماع لتحديثات السجل تلقائياً
+export function listenToAuditLogs(callback) {
+  const q = query(collection(db, "auditLogs"), orderBy("timestamp", "desc"));
+  onSnapshot(q, (snapshot) => {
+    const logs = snapshot.docs.map((doc) => doc.data());
+    callback(logs);
+  });
+}
+>>>>>>> b3828580e6cb2968ffc8730f48516d491ed2bc28
