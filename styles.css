@@ -10,8 +10,8 @@
   --primary: #8a63d2; /* بنفسجي جديد يتناسب مع التصميم */
   --primary-light: #4a90e2; /* أزرق للوضع الأبيض */
   --accent: #7ed321;
-  --text: #1f2937;
-  --dark-text: #f3f4f6; /* أبيض ساطع */
+  --text: #1f2937; /* Default text color for Light Mode */
+  --dark-text: #f3f4f6; /* Text color for Dark Mode */
   --light-bg-start: #f5f7fa;
   --light-bg-end: #c3cfe2;
 }
@@ -108,10 +108,9 @@ textarea:focus {
 /* 7. Dark Mode Styles - GLASSMORPHISM DESIGN
   ------------------------------------
 */
-
 .dark-mode {
+  --text: var(--dark-text); 
   background: linear-gradient(135deg, #3a3897 0%, #2c2a72 40%, #1a1a4e 100%);
-  color: var(--dark-text);
 }
 
 .dark-mode .stat-card {
@@ -131,11 +130,7 @@ textarea:focus {
 .dark-mode .bg-gray-50 {
     background-color: transparent !important;
 }
-.dark-mode .text-gray-700 { color: #d1d5db; }
-.dark-mode .text-gray-500 { color: #9ca3af; }
-.dark-mode .text-gray-900 {
-  color: var(--dark-text); /* or simply color: #f3f4f6; */
-}
+
 .dark-mode .border-gray-200 { border-color: rgba(255, 255, 255, 0.15); }
 .dark-mode .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255, 255, 255, 0.15); }
 
@@ -168,11 +163,13 @@ textarea:focus {
 .dark-mode .details-btn, 
 .dark-mode .mark-paid-btn {
     background-color: rgba(255, 255, 255, 0.08);
+    border-color: transparent;
 }
-.dark-mode .edit-btn { border-color: var(--primary); color: var(--primary); }
-.dark-mode .delete-btn { border-color: #ff6b6b; color: #ff6b6b; }
-.dark-mode .details-btn { border-color: #9ca3af; color: #9ca3af; }
-.dark-mode .mark-paid-btn { border-color: var(--accent); color: var(--accent); }
+
+.dark-mode .edit-btn { color: var(--primary); }
+.dark-mode .delete-btn { color: #ff6b6b; }
+.dark-mode .details-btn { color: #9ca3af; }
+.dark-mode .mark-paid-btn { color: var(--accent); }
 
 .dark-mode .edit-btn:hover { background-color: var(--primary); color: white; }
 .dark-mode .delete-btn:hover { background-color: #ff6b6b; color: white; }
@@ -272,21 +269,18 @@ textarea:focus {
 */
 #loadingOverlay {
   position: fixed;
-  inset: 0; /* تجعل العنصر يغطي الشاشة بالكامل */
-  z-index: 1000; /* لضمان أنه في الطبقة العلوية فوق كل شيء */
+  inset: 0;
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.4s ease-out; /* حركة اختفاء ناعمة */
-
-  /* استخدم نفس خلفية الوضع الليلي لتجربة متناسقة */
+  transition: opacity 0.4s ease-out;
   background: linear-gradient(135deg, #3a3897 0%, #2c2a72 40%, #1a1a4e 100%);
 }
 
-/* هذا الكلاس سنستخدمه لإخفاء الشاشة عبر الجافاسكريبت */
 #loadingOverlay.hidden {
   opacity: 0;
-  pointer-events: none; /* للسماح بالضغط على ما تحتها بعد إخفائها */
+  pointer-events: none;
 }
 
 /* Styling for new KPI Card Icons */
@@ -336,16 +330,17 @@ textarea:focus {
     border-bottom-color: rgba(255, 255, 255, 0.1);
   }
 }
-/* حلول نهائية لألوان النصوص في الوضع الليلي */
-.dark-mode .text-gray-900,
-.dark-mode .text-gray-700,
-.dark-mode .text-gray-500,
-.dark-mode .text-black,
-.dark-mode .text-gray-800 {
-  color: var(--dark-text) !important;
-}
 
-/* لو في جزء معين مش عايزه يتغير لونه في الوضع الليلي أضف له كلاس استثنائي زي: .keep-dark-color */
-.dark-mode .keep-dark-color {
-  color: #1f2937 !important; /* أو أي لون مناسب */
+/* ============================================
+  Final Fix for Text Colors
+  ============================================
+*/
+/* This ensures that any utility classes for text color are overridden in dark mode */
+.dark-mode .text-gray-900,
+.dark-mode .text-gray-800,
+.dark-mode .text-gray-700,
+.dark-mode .text-gray-600,
+.dark-mode .text-gray-500,
+.dark-mode .text-black {
+  color: var(--dark-text) !important;
 }
