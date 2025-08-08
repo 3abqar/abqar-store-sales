@@ -108,6 +108,7 @@ textarea:focus {
 /* 7. Dark Mode Styles - GLASSMORPHISM DESIGN
   ------------------------------------
 */
+
 .dark-mode {
   background: linear-gradient(135deg, #3a3897 0%, #2c2a72 40%, #1a1a4e 100%);
   color: var(--dark-text);
