@@ -5,7 +5,7 @@
   "scripts": {
     "test": "vitest --environment jsdom",
     "dev": "vite",
-    "build": "vite builئd"
+    "build": "vite build"
   },
   "keywords": [],
   "author": "",
