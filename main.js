@@ -15,6 +15,8 @@ let currentCustomerPage = 1;
 const rowsPerPage = 10;
 let customerSearchTerm = '';
 let filteredSales = null;
+let filteredCustomers = null; // -- متغير جديد لفلترة العملاء
+let isNavigatingProgrammatically = false; // -- متغير حالة جديد لمنع تعارض الفلترة
 let reminders = JSON.parse(localStorage.getItem('reminders') || '{}');
 let recentActivities = [];
 let notifications = [];
@@ -434,63 +436,113 @@ function updateCustomerAggregates() {
   });
 }
 
+// --- NEW FILTERING FUNCTIONS ---
+window.filterSalesByService = (serviceName) => {
+  filteredSales = salesData.filter(sale => sale.serviceType === serviceName);
+  currentSalesPage = 1;
+  isNavigatingProgrammatically = true;
+  document.querySelector('[data-tab="sales-entry"]').click();
+  isNavigatingProgrammatically = false;
+  updateSalesTable();
+  UI.showNotification(`يتم الآن عرض مبيعات: ${serviceName}`, "info");
+};
+
+window.filterSalesByMonth = (monthKey) => {
+  if (!monthKey) return;
+  filteredSales = salesData.filter(sale => sale.date.startsWith(monthKey));
+  currentSalesPage = 1;
+  isNavigatingProgrammatically = true;
+  document.querySelector('[data-tab="sales-entry"]').click();
+  isNavigatingProgrammatically = false;
+  updateSalesTable();
+  UI.showNotification(`يتم الآن عرض مبيعات شهر: ${monthKey}`, "info");
+};
+
+window.filterNewCustomers = () => {
+    const now = new Date();
+    const thisMonthStr = now.toISOString().substring(0, 7);
+    const newCustomerNumbers = new Set();
+    const salesByCustomer = {};
+    salesData.forEach(sale => {
+        if (sale.whatsappNumber) {
+            if (!salesByCustomer[sale.whatsappNumber]) { salesByCustomer[sale.whatsappNumber] = []; }
+            salesByCustomer[sale.whatsappNumber].push(sale.date);
+        }
+    });
+    for (const number in salesByCustomer) {
+        const firstSaleDate = salesByCustomer[number].sort()[0];
+        if (firstSaleDate.substring(0, 7) === thisMonthStr) {
+            newCustomerNumbers.add(number);
+        }
+    }
+    filteredCustomers = Array.from(newCustomerNumbers).map(num => customersData[num]).filter(Boolean);
+    currentCustomerPage = 1;
+    isNavigatingProgrammatically = true;
+    document.querySelector('[data-tab="customers"]').click();
+    isNavigatingProgrammatically = false;
+    updateCustomerTable();
+    UI.showNotification(`يتم الآن عرض العملاء الجدد لهذا الشهر (${filteredCustomers.length} عميل)`, "info");
+}
+
+
 function setupEventListeners() {
-    // --- (جديد) تفعيل زر الإعدادات والقائمة المنبثقة ---
     const settingsBtn = document.getElementById('settingsToggleBtn');
     const settingsPopover = document.getElementById('settingsPopover');
     if (settingsBtn) {
-        settingsBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // منع إغلاق القائمة فورًا
-            settingsPopover.classList.toggle('hidden');
-        });
+        settingsBtn.addEventListener('click', (e) => { e.stopPropagation(); settingsPopover.classList.toggle('hidden'); });
     }
-    // إغلاق القائمة عند الضغط في أي مكان آخر في الصفحة
     document.addEventListener('click', (e) => {
         if (settingsPopover && !settingsPopover.classList.contains('hidden') && !settingsPopover.contains(e.target) && !settingsBtn.contains(e.target)) {
             settingsPopover.classList.add('hidden');
         }
     });
 
-    // --- (مُحسَّن) ربط كل أزرار التحكم (للموبايل والكمبيوتر) ---
-    // ربط كل أزرار الوضع الليلي
-    document.querySelectorAll('[id^="darkmode-toggle"]').forEach(toggle => {
-        toggle.addEventListener('change', handleDarkModeToggle);
-    });
-
-    // ربط كل أزرار اللغة
-    document.querySelectorAll('[id^="languageToggle"]').forEach(toggle => {
-        toggle.addEventListener('click', handleLanguageToggle);
-    });
+    document.querySelectorAll('[id^="darkmode-toggle"]').forEach(toggle => { toggle.addEventListener('change', handleDarkModeToggle); });
+    document.querySelectorAll('[id^="languageToggle"]').forEach(toggle => { toggle.addEventListener('click', handleLanguageToggle); });
     
-    // ربط زر سجل التدقيق في القائمة الجانبية (للموبايل)
     document.getElementById('activityToggle').addEventListener('click', () => {
         UI.toggleActivityPanel(true);
-        if (window.innerWidth < 640 && document.getElementById('navLinks').classList.contains('open')) {
-            toggleMobileMenu(); // إغلاق القائمة الجانبية عند فتح سجل التدقيق
-        }
+        if (window.innerWidth < 640 && document.getElementById('navLinks').classList.contains('open')) { toggleMobileMenu(); }
     });
-    // ربط زر سجل التدقيق في الهيدر (للكمبيوتر)
     document.getElementById('activityToggleDesktop').addEventListener('click', () => UI.toggleActivityPanel(true));
 
+    // --- ربط بطاقات الأرقام الرئيسية (KPIs) ---
+    const newCustomersCard = document.getElementById('newCustomers')?.parentElement.closest('.stat-card');
+    if (newCustomersCard) {
+        newCustomersCard.style.cursor = 'pointer';
+        newCustomersCard.addEventListener('click', window.filterNewCustomers);
+    }
+    
+    document.getElementById('totalDebtCard')?.addEventListener('click', () => {
+        isNavigatingProgrammatically = true;
+        document.querySelector('[data-tab="debt-management"]').click();
+        isNavigatingProgrammatically = false;
+    });
 
-    // --- باقي الأكواد الأساسية (موجودة بالكامل) ---
+    document.getElementById('totalOrdersCard')?.addEventListener('click', () => {
+        isNavigatingProgrammatically = true;
+        document.querySelector('[data-tab="sales-entry"]').click();
+        isNavigatingProgrammatically = false;
+    });
+    // --- نهاية ربط بطاقات الأرقام ---
+
     document.querySelectorAll(".nav-link").forEach(link => link.addEventListener("click", handleTabClick));
     document.getElementById("salesForm").addEventListener("submit", handleSaveSale);
     document.getElementById("filterSalesBtn").addEventListener("click", handleFilterSales);
-    document.querySelectorAll('.sales-range-btn').forEach(button => {
-        button.addEventListener('click', handleSalesRangeChange);
+    document.querySelectorAll('.sales-range-btn').forEach(button => { button.addEventListener('click', handleSalesRangeChange); });
+    document.getElementById('customerSearch').addEventListener('input', (e) => { 
+        customerSearchTerm = e.target.value.toLowerCase(); 
+        filteredCustomers = null; 
+        currentCustomerPage = 1; 
+        updateCustomerTable(); 
     });
-    document.getElementById('customerSearch').addEventListener('input', (e) => { customerSearchTerm = e.target.value.toLowerCase(); currentCustomerPage = 1; updateCustomerTable(); });
     document.getElementById('salesPdfBtn')?.addEventListener('click', exportSalesPDF);
     document.getElementById('customersPdfBtn')?.addEventListener('click', exportCustomersPDF);
     document.getElementById('mobileMenuToggle')?.addEventListener('click', toggleMobileMenu);
     document.getElementById('closeActivity').addEventListener('click', () => UI.toggleActivityPanel(false));
     
     document.getElementById('activityOverlay').addEventListener('click', () => {
-        const links = document.getElementById('navLinks');
-        if (links.classList.contains('open')) {
-            toggleMobileMenu();
-        }
+        if (document.getElementById('navLinks').classList.contains('open')) { toggleMobileMenu(); }
         UI.toggleActivityPanel(false);
     });
     
@@ -519,18 +571,12 @@ function setupEventListeners() {
     document.getElementById('closeWhatsAppModalBtn').addEventListener('click', hideWhatsAppCustomerModal);
     document.getElementById('whatsappCustomerSearch').addEventListener('input', (e) => renderWhatsAppCustomerList(e.target.value));
     document.getElementById('editGoalBtn')?.addEventListener('click', handleSetDailyGoal);
-
-    document.getElementById('addServiceBtn').addEventListener('click', () => {
-        UI.resetServiceForm();
-        UI.showServicePanel();
-    });
+    document.getElementById('addServiceBtn').addEventListener('click', () => { UI.resetServiceForm(); UI.showServicePanel(); });
     document.getElementById('closeServiceFormBtn').addEventListener('click', UI.hideServicePanel);
     document.getElementById('serviceFormPanelOverlay').addEventListener('click', UI.hideServicePanel);
     
     const goalModal = document.getElementById('dailyGoalModal');
-    document.getElementById('cancelGoalBtn').addEventListener('click', () => {
-        goalModal.classList.add('hidden');
-    });
+    document.getElementById('cancelGoalBtn').addEventListener('click', () => { goalModal.classList.add('hidden'); });
     document.getElementById('confirmGoalBtn').addEventListener('click', () => {
         const input = document.getElementById('newGoalInput');
         const newGoal = input.value;
@@ -566,42 +612,44 @@ function handleSalesRangeChange(event) {
     const type = event.target.dataset.type;
     UI.updateDynamicKpi(salesData, range, type);
 }
-// الصق هذا الكود بالكامل في ملف main.js
 
-// الدالة الأولى: مسؤولة عن فتح وإغلاق القائمة وتبديل شكل الأيقونة
 function toggleMobileMenu() {
     const links = document.getElementById('navLinks');
     const menuIcon = document.getElementById('mobileMenuIcon');
     const overlay = document.getElementById('activityOverlay');
-
     const isOpen = links.classList.toggle('open');
-
-    // إظهار أو إخفاء الطبقة الشفافة بناءً على حالة القائمة
     if (isOpen) {
         overlay.classList.remove('hidden');
-        menuIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>`; // أيقونة X
+        menuIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>`;
     } else {
         overlay.classList.add('hidden');
-        menuIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>`; // أيقونة ☰
+        menuIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>`;
     }
 }
 
-// الدالة الثانية: مسؤولة عما يحدث عند الضغط على أي رابط في القائمة
-// الكود النهائي والصحيح لدالة handleTabClick
 function handleTabClick() {
-    // هذا الجزء لم يتغير: يقوم بفتح الصفحة الصحيحة وتحديد الرابط النشط
     document.querySelectorAll(".nav-link").forEach(l => l.classList.remove("active"));
     this.classList.add("active");
-    document.querySelectorAll(".tab-content").forEach(content => content.classList.add("hidden"));
-    document.getElementById(this.dataset.tab).classList.remove("hidden");
+    
+    if (!isNavigatingProgrammatically) {
+        filteredSales = null;
+        filteredCustomers = null;
+    }
 
-    // هذا الجزء هو المهم: يتأكد من إغلاق القائمة الجانبية بعد الاختيار
-    const links = document.getElementById('navLinks');
-    if (window.innerWidth < 640 && links.classList.contains('open')) {
-        toggleMobileMenu(); // نستدعي الدالة الرئيسية للإغلاق، وهي الطريقة الصحيحة
+    document.querySelectorAll(".tab-content").forEach(content => {
+        content.classList.add("hidden");
+        content.style.animation = 'none';
+        void content.offsetWidth;
+        content.style.animation = null;
+    });
+    
+    const targetTab = document.getElementById(this.dataset.tab);
+    targetTab.classList.remove("hidden");
+    
+    if (window.innerWidth < 640 && document.getElementById('navLinks').classList.contains('open')) {
+        toggleMobileMenu();
     }
     
-    // باقي الكود لم يتغير
     selectedCatalogItems = [];
     UI.updateFloatingActionBar(selectedCatalogItems.length);
     UI.clearCatalogCheckboxes();
@@ -610,7 +658,6 @@ function handleTabClick() {
         UI.updateDynamicKpi(salesData, 24, 'profit');
     }
 }
-
 
 function updateSalesTable() {
     const data = filteredSales || salesData;
@@ -622,8 +669,11 @@ function updateSalesTable() {
 }
 
 function updateCustomerTable() {
+    let baseData = filteredCustomers !== null ? filteredCustomers : Object.values(customersData);
+    
     const term = customerSearchTerm.toLowerCase();
-    const arr = Object.values(customersData).filter(c => !term || (c.name && c.name.toLowerCase().includes(term)) || (c.whatsappNumber && c.whatsappNumber.includes(term))).sort((a,b)=> new Date(b.lastPurchase || 0) - new Date(a.lastPurchase || 0));
+    const arr = baseData.filter(c => !term || (c.name && c.name.toLowerCase().includes(term)) || (c.whatsappNumber && c.whatsappNumber.includes(term))).sort((a,b)=> new Date(b.lastPurchase || 0) - new Date(a.lastPurchase || 0));
+    
     const totalPages = Math.ceil(arr.length / rowsPerPage) || 1;
     if (currentCustomerPage > totalPages) currentCustomerPage = totalPages;
     const start = (currentCustomerPage - 1) * rowsPerPage;
@@ -631,6 +681,9 @@ function updateCustomerTable() {
     UI.renderCustomerDatabase(paged, showCustomerDetails, {currentPage: currentCustomerPage, totalPages}, (p)=>{ currentCustomerPage = p; updateCustomerTable(); }, quickCreateOrder);
 }
 
+// ... (باقي الدوال تبقى كما هي بدون تغيير)
+// The rest of the functions (quickCreateOrder, addActivity, reminders, etc.) remain unchanged.
+// ... (All functions from quickCreateOrder down to the end of the file stay exactly the same)
 function quickCreateOrder(name, number) {
     document.querySelector('[data-tab="sales-entry"]').click();
     document.getElementById('clientName').value = name;

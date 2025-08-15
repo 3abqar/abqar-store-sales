@@ -1410,11 +1410,17 @@ label[for="discountModeToggle"] {
 
 /* Desktop Navigation Bar styles */
 @media (min-width: 640px) {
-    header .nav-link {
-        border-radius: 9999px;
-        border-bottom: none !important;
-        font-weight: 500;
-    }
+header .nav-link {
+  overflow: visible !important;  /* هذا هو السطر الحاسم الذي يحل المشكلة */
+  white-space: nowrap;          /* هذا السطر يبقي على حجم الكبسولة صحيحاً */
+  border-radius: 9999px;
+  border-bottom: none !important;
+  font-weight: 500;
+}
+/* هذا الكود يخفي الخط السفلي في نسخة الكمبيوتر فقط */
+header .nav-link::before {
+  display: none;
+}
     header .nav-link.active {
         background-color: var(--primary);
         color: white !important;
@@ -1423,4 +1429,24 @@ label[for="discountModeToggle"] {
     .dark-mode header .nav-link.active {
         box-shadow: 0 0 20px rgba(138, 99, 210, 0.6);
     }
+}
+/* ===================================================================
+   FINAL Audit Panel Push Animation (Mobile)
+   =================================================================== */
+
+@media (max-width: 639px) {
+  /* عندما تفتح لوحة سجل التدقيق، ادفع التطبيق بالكامل إلى اليسار */
+  body.activity-panel-open #app-container {
+    transform: translateX(-16rem); /* 16rem هي عرض اللوحة (w-64) */
+  }
+
+  /* أبقِ الهيدر ثابتًا في الأعلى أثناء التمرير */
+  body.activity-panel-open header,
+  body.activity-panel-open nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+  }
 }

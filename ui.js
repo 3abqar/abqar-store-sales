@@ -16,13 +16,71 @@ export function setCurrentLanguage(lang) {
 export function initializeCharts() {
   Chart.defaults.font.family = "'Cairo', sans-serif";
   const serviceTypeCtx = document.getElementById("serviceTypeChart")?.getContext("2d");
+  
+  // --- الرسم البياني الدائري (Pie Chart) ---
   if (serviceTypeCtx) {
-    serviceTypeChart = new Chart(serviceTypeCtx, { type: "pie", data: { labels: [], datasets: [{ data: [], backgroundColor: ["#4A90E2", "#7ED321", "#F5A623", "#9013FE", "#BD10E0", "#4A4A4A"] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } } });
+    serviceTypeChart = new Chart(serviceTypeCtx, { 
+      type: "pie", 
+      data: { 
+        labels: [], 
+        datasets: [{ data: [], backgroundColor: ["#4A90E2", "#7ED321", "#F5A623", "#9013FE", "#BD10E0", "#4A4A4A"] }] 
+      }, 
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false, 
+        plugins: { legend: { position: 'top' } },
+        // --- الجزء الجديد والمهم ---
+        onClick: (event, elements) => {
+          if (elements.length > 0) {
+            const chartElement = elements[0];
+            const index = chartElement.index;
+            const serviceName = serviceTypeChart.data.labels[index];
+            
+            // استدعاء دالة الفلترة (سنقوم بإنشائها في الخطوة التالية)
+            if (window.filterSalesByService) {
+              window.filterSalesByService(serviceName);
+            }
+          }
+        }
+        // --- نهاية الجزء الجديد ---
+      } 
+    });
   }
   
   const salesTrendCtx = document.getElementById("salesTrendChart")?.getContext("2d");
+
+  // --- الرسم البياني الخطي (Line Chart) ---
   if(salesTrendCtx) {
-    salesTrendChart = new Chart(salesTrendCtx, { type: "line", data: { labels: [], datasets: [{ label: "Revenue", data: [], borderColor: "#4A90E2", tension: 0.1 }, { label: "Profit", data: [], borderColor: "#7ED321", tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } } });
+    salesTrendChart = new Chart(salesTrendCtx, { 
+      type: "line", 
+      data: { 
+        labels: [], 
+        datasets: [
+          { label: "Revenue", data: [], borderColor: "#4A90E2", tension: 0.1 }, 
+          { label: "Profit", data: [], borderColor: "#7ED321", tension: 0.1 }
+        ] 
+      }, 
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false, 
+        scales: { y: { beginAtZero: true } },
+        // --- الجزء الجديد والمهم ---
+        onClick: (event, elements) => {
+           if (elements.length > 0) {
+             const chartElement = elements[0];
+             const index = chartElement.index;
+             
+             // استدعاء دالة الفلترة (سنقوم بإنشائها في الخطوة التالية)
+             if (window.filterSalesByMonth) {
+                // نمرر "مفتاح" الشهر بدلاً من اسمه لسهولة الفلترة
+                const monthKey = salesTrendChart.config.data.monthKeys[index];
+                window.filterSalesByMonth(monthKey);
+             }
+           }
+        }
+        // --- نهاية الجزء الجديد ---
+      } 
+    });
   }
 }
 // --- Loyalty Helpers (UI) ---
@@ -79,6 +137,11 @@ export function updateCharts(salesData) {
       monthlyData[month].profit += sale.profit;
     });
     const sortedMonths = Object.keys(monthlyData).sort();
+    
+    // -- الجزء الجديد والمهم --
+    salesTrendChart.config.data.monthKeys = sortedMonths; // نخزن مفاتيح الشهور هنا
+    // -- نهاية التعديل --
+
     salesTrendChart.data.labels = sortedMonths.map(m => {
         const [year, month] = m.split('-');
         return new Date(year, month-1).toLocaleString(currentLanguage === 'ar' ? 'ar-EG' : 'en-US', {month: 'short', year: 'numeric'})
@@ -879,20 +942,22 @@ export function displayFilteredNumbers(numbers) {
     textarea.value = numbers.join('\n');
 }
 // ui.js - أضف هذه الدالة في نهاية الملف
+// ui.js - استبدل دالة toggleActivityPanel القديمة بهذه
 export function toggleActivityPanel(show) {
     const panel = document.getElementById('activityPanel');
     const overlay = document.getElementById('activityOverlay');
     if (!panel || !overlay) return;
 
     if (show) {
+        document.body.classList.add('activity-panel-open');
         panel.classList.remove('translate-x-full');
         overlay.classList.remove('hidden');
     } else {
+        document.body.classList.remove('activity-panel-open');
         panel.classList.add('translate-x-full');
         overlay.classList.add('hidden');
     }
 }
-
 // New: Services Management UI Functions
 export function populateServiceDropdown(services) {
     const select = document.getElementById('serviceType');
