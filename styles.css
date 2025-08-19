@@ -1450,3 +1450,17 @@ header .nav-link::before {
     z-index: 20;
   }
 }
+/* ======================================================= */
+/* === (إصلاح نهائي) جعل قائمة الاقتراحات غير شفافة === */
+/* ======================================================= */
+
+#clientNameSuggestions {
+  /* لون خلفية صريح وغير شفاف للوضع العادي */
+  background-color: #ffffff !important; 
+}
+
+body.dark-mode #clientNameSuggestions {
+  /* لون خلفية صريح وغير شفاف للوضع الليلي */
+  background-color: #334155 !important; /* هذا يعادل slate-700 */
+  border: 1px solid #475569;
+}

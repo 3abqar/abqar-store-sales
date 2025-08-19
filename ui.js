@@ -1,4 +1,4 @@
-// ui.js - الكود الكامل والنهائي والمدمج
+// ui.js - الكود الكامل والصحيح
 
 import { listenToAuditLogs } from './auditLog.js';
 let serviceTypeChart, salesTrendChart;
@@ -17,34 +17,67 @@ export function initializeCharts() {
   Chart.defaults.font.family = "'Cairo', sans-serif";
   const serviceTypeCtx = document.getElementById("serviceTypeChart")?.getContext("2d");
   
-  // --- الرسم البياني الدائري (Pie Chart) ---
+  // --- الرسم البياني الشريطي الأفقي (Horizontal Bar Chart) ---
   if (serviceTypeCtx) {
-    serviceTypeChart = new Chart(serviceTypeCtx, { 
-      type: "pie", 
-      data: { 
-        labels: [], 
-        datasets: [{ data: [], backgroundColor: ["#4A90E2", "#7ED321", "#F5A623", "#9013FE", "#BD10E0", "#4A4A4A"] }] 
-      }, 
-      options: { 
-        responsive: true, 
-        maintainAspectRatio: false, 
-        plugins: { legend: { position: 'top' } },
-        // --- الجزء الجديد والمهم ---
-        onClick: (event, elements) => {
-          if (elements.length > 0) {
-            const chartElement = elements[0];
-            const index = chartElement.index;
-            const serviceName = serviceTypeChart.data.labels[index];
-            
-            // استدعاء دالة الفلترة (سنقوم بإنشائها في الخطوة التالية)
-            if (window.filterSalesByService) {
-              window.filterSalesByService(serviceName);
+      serviceTypeChart = new Chart(serviceTypeCtx, {
+        type: "bar", // 1. تغيير النوع إلى شريطي
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'المبيعات',
+            data: [],
+            backgroundColor: ["#4A90E2", "#7ED321", "#F5A623", "#9013FE", "#BD10E0", "#4A4A4A", "#FF6384", "#36A2EB", "#FFCE56"],
+            borderColor: 'transparent',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          indexAxis: 'y', // 2. هذا السطر يجعله أفقيًا
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false // 3. إخفاء مفتاح الألوان لأننا لم نعد بحاجة إليه
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) {
+                    label += ': ';
+                  }
+                  if (context.parsed.x !== null) {
+                    label += new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(context.parsed.x);
+                  }
+                  return label;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: {
+                color: document.body.classList.contains('dark-mode') ? '#f3f4f6' : '#374151'
+              }
+            },
+            y: {
+              ticks: {
+                color: document.body.classList.contains('dark-mode') ? '#f3f4f6' : '#374151'
+              }
+            }
+          },
+          onClick: (event, elements) => {
+            if (elements.length > 0) {
+              const index = elements[0].index;
+              const serviceName = serviceTypeChart.data.labels[index];
+              if (window.filterSalesByService) {
+                window.filterSalesByService(serviceName);
+              }
             }
           }
         }
-        // --- نهاية الجزء الجديد ---
-      } 
-    });
+      });
   }
   
   const salesTrendCtx = document.getElementById("salesTrendChart")?.getContext("2d");
@@ -64,26 +97,21 @@ export function initializeCharts() {
         responsive: true, 
         maintainAspectRatio: false, 
         scales: { y: { beginAtZero: true } },
-        // --- الجزء الجديد والمهم ---
         onClick: (event, elements) => {
            if (elements.length > 0) {
              const chartElement = elements[0];
              const index = chartElement.index;
-             
-             // استدعاء دالة الفلترة (سنقوم بإنشائها في الخطوة التالية)
              if (window.filterSalesByMonth) {
-                // نمرر "مفتاح" الشهر بدلاً من اسمه لسهولة الفلترة
                 const monthKey = salesTrendChart.config.data.monthKeys[index];
                 window.filterSalesByMonth(monthKey);
              }
            }
         }
-        // --- نهاية الجزء الجديد ---
       } 
     });
   }
 }
-// --- Loyalty Helpers (UI) ---
+
 function composeLoyaltyMessage(points) {
   const pts = Number(points || 0);
   const ptsText = pts.toLocaleString('ar-EG');
@@ -97,12 +125,11 @@ function composeLoyaltyMessage(points) {
   return lines.join("\n");
 }
 
-// تحويل رقم واتساب لصيغة دولية مصر (+20)
 function toEgyptIntl(whats) {
   if (!whats) return null;
   let n = String(whats).replace(/\D+/g, "");
-  if (n.startsWith("20")) return n;           // 20xxxxxxxxxx
-  if (n.startsWith("0"))  return "20" + n.slice(1); // 0xxxxxxxxx -> 20xxxxxxxxx
+  if (n.startsWith("20")) return n;
+  if (n.startsWith("0"))  return "20" + n.slice(1);
   if (n.length === 10 || n.length === 11) return "20" + n;
   return n;
 }
@@ -114,7 +141,6 @@ function buildWhatsAppLink(msisdn, message) {
   return `https://wa.me/${intl}?text=${text}`;
 }
 
-
 export function updateCharts(salesData) {
   if (!salesData) return;
   const isDarkMode = document.body.classList.contains("dark-mode");
@@ -124,7 +150,8 @@ export function updateCharts(salesData) {
     const serviceCounts = salesData.reduce((acc, sale) => { acc[sale.serviceType] = (acc[sale.serviceType] || 0) + sale.price; return acc; }, {});
     serviceTypeChart.data.labels = Object.keys(serviceCounts);
     serviceTypeChart.data.datasets[0].data = Object.values(serviceCounts);
-    serviceTypeChart.options.plugins.legend.labels.color = textColor;
+    serviceTypeChart.options.scales.x.ticks.color = textColor;
+    serviceTypeChart.options.scales.y.ticks.color = textColor;
     serviceTypeChart.update();
   }
 
@@ -138,9 +165,7 @@ export function updateCharts(salesData) {
     });
     const sortedMonths = Object.keys(monthlyData).sort();
     
-    // -- الجزء الجديد والمهم --
-    salesTrendChart.config.data.monthKeys = sortedMonths; // نخزن مفاتيح الشهور هنا
-    // -- نهاية التعديل --
+    salesTrendChart.config.data.monthKeys = sortedMonths;
 
     salesTrendChart.data.labels = sortedMonths.map(m => {
         const [year, month] = m.split('-');
@@ -191,16 +216,12 @@ function salesRowContent(sale) {
         </td>`;
 }
 
-// ui.js - استبدل الدالة القديمة بهذه النسخة
 function customerRowContent(customer) {
     const isVip = (customer.tags && customer.tags.includes('VIP')) || (customer.totalSpent || 0) > 10000;
     const lastPurchase = new Date(customer.lastPurchase);
-    const daysInactive = lastPurchase && !isNaN(lastPurchase) ? (Date.now() - lastPurchase.getTime()) / (1000*60*60*24) : Infinity;
-
     let typeKey = 'type_new';
     let badgeClass = 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
 
-    // --- هذا هو الترتيب الصحيح للشروط ---
     if (customer.tags && customer.tags.includes('مستورد')) {
         typeKey = 'type_imported';
         badgeClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
@@ -208,24 +229,20 @@ function customerRowContent(customer) {
         typeKey = 'type_returning';
         badgeClass = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
     }
-    // --- نهاية التعديل ---
-
-    // Removed inactive tooltip and warning icon
-    const warningIcon = ''; 
 
     return `
         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
             ${customer.name} ${isVip ? '<span class="vip-badge" data-translate="vip"></span>' : ''}
             <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${badgeClass}" data-translate="${typeKey}"></span>
-            ${warningIcon}
         </td>
-<td class="px-6 py-4 whitespace-nowrap text-sm">${formatEgyptianPhoneNumber(customer.whatsappNumber)}</td>        <td class="px-6 py-4 whitespace-nowrap text-sm">${formatDate(customer.lastPurchase)}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm">${formatEgyptianPhoneNumber(customer.whatsappNumber)}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm">${formatDate(customer.lastPurchase)}</td>
         <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold">${customer.totalOrders || 0}</td>
         <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold">${formatCurrency(customer.totalSpent)}</td>
         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium actions-cell space-x-2">
             <button class="details-btn" data-id="${customer.whatsappNumber}" data-translate="details"></button>
-        </td>
-    `;
+            <button class="delete-btn delete-customer-btn" data-id="${customer.whatsappNumber}" data-name="${customer.name}" data-translate="delete"></button>
+        </td>`;
 }
 
 function renderPaginationControls(elementId, pagination, onPageChange) {
@@ -268,25 +285,30 @@ export function renderSalesLog(dataToRender, editSaleCallback, deleteSaleCallbac
   setLanguage(currentLanguage);
 }
 
-export function renderCustomerDatabase(customersArray, showCustomerDetailsCallback, pagination, onPageChange, quickOrderCallback) {
-  const tableBody = document.getElementById("customersTableBody");
-  if(!tableBody) return;
-  tableBody.innerHTML = "";
-  if (!customersArray || customersArray.length === 0) {
-    tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center" data-translate="no_customer_records_found"></td></tr>`;
-    document.getElementById('customersPagination').innerHTML = '';
+export function renderCustomerDatabase(customersArray, showCustomerDetailsCallback, pagination, onPageChange, quickOrderCallback, deleteCustomerCallback) {
+    const tableBody = document.getElementById("customersTableBody");
+    if(!tableBody) return;
+    tableBody.innerHTML = "";
+    if (!customersArray || customersArray.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center" data-translate="no_customer_records_found"></td></tr>`;
+        document.getElementById('customersPagination').innerHTML = '';
+        setLanguage(currentLanguage);
+        return;
+    }
+    customersArray.forEach(customer => {
+        const row = tableBody.insertRow();
+        row.className = "hover:bg-gray-50 dark:hover:bg-slate-700";
+        row.dataset.id = customer.whatsappNumber || customer.id;
+        row.innerHTML = customerRowContent(customer);
+        row.querySelector(".details-btn").onclick = () => showCustomerDetailsCallback(customer.whatsappNumber);
+        
+        const deleteBtn = row.querySelector('.delete-customer-btn');
+        if(deleteBtn) {
+            deleteBtn.onclick = () => deleteCustomerCallback(deleteBtn.dataset.id, deleteBtn.dataset.name);
+        }
+    });
+    renderPaginationControls('customersPagination', pagination, onPageChange);
     setLanguage(currentLanguage);
-    return;
-  }
-  customersArray.forEach(customer => {
-      const row = tableBody.insertRow();
-      row.className = "hover:bg-gray-50 dark:hover:bg-slate-700";
-      row.dataset.id = customer.whatsappNumber || customer.id;
-      row.innerHTML = customerRowContent(customer);
-      row.querySelector(".details-btn").onclick = () => showCustomerDetailsCallback(customer.whatsappNumber);
-  });
-  renderPaginationControls('customersPagination', pagination, onPageChange);
-  setLanguage(currentLanguage);
 }
 
 export function renderDebtManagement(salesData, markAsPaidCallback) {
@@ -326,16 +348,11 @@ export function renderDebtManagement(salesData, markAsPaidCallback) {
 export function updateKpiCards(salesData, customersData) {
     const now = new Date();
     const thisMonthStr = now.toISOString().substring(0, 7);
-    const thisMonthSales = salesData.filter(s => s.date.substring(0, 7) === thisMonthStr);
-
-    // Removed monthlyRevenueEl and related calculation
-
+    
     const totalRevenue = salesData.reduce((sum, s) => sum + s.price, 0);
     const totalProfit = salesData.reduce((sum, s) => sum + s.profit, 0);
     const profitMargin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : '0.0';
     document.getElementById("profitMargin").textContent = profitMargin;
-    
-    // Removed avgSaleValue and related calculation
     
     const salesByCustomer = {};
     salesData.forEach(sale => {
@@ -356,8 +373,7 @@ export function updateKpiCards(salesData, customersData) {
     }
     document.getElementById("newCustomers").textContent = newCustomersThisMonth;
 
-    // Removed newVsReturning and inactiveClients calculations and UI updates
-    
+    const thisMonthSales = salesData.filter(s => s.date.substring(0, 7) === thisMonthStr);
     const monthSalesByCustomer = {};
     thisMonthSales.forEach(sale => {
         monthSalesByCustomer[sale.clientName] = (monthSalesByCustomer[sale.clientName] || 0) + sale.price;
@@ -456,7 +472,6 @@ export function updateDashboardUI(salesData, dailyGoal) {
         topServiceEl.title = topService;
     }
     
-    // Initial update for dynamic KPIs
     updateDynamicKpi(salesData, 24, 'revenue');
     updateDynamicKpi(salesData, 24, 'profit');
 
@@ -487,13 +502,13 @@ export function updateDynamicKpi(salesData, range, type) {
     const now = new Date();
     let startDate = new Date(now);
 
-    if (range === 24) { // Last 24 hours (today)
+    if (range === 24) {
         startDate.setHours(0, 0, 0, 0);
-    } else if (range === 7) { // Last 7 days
-        startDate.setDate(now.getDate() - 6); // Go back 6 days to include today
+    } else if (range === 7) {
+        startDate.setDate(now.getDate() - 6);
         startDate.setHours(0, 0, 0, 0);
-    } else if (range === 30) { // Last 30 days
-        startDate.setDate(now.getDate() - 29); // Go back 29 days to include today
+    } else if (range === 30) {
+        startDate.setDate(now.getDate() - 29);
         startDate.setHours(0, 0, 0, 0);
     }
 
@@ -543,8 +558,13 @@ export function renderServiceProfitability(salesData) {
     setLanguage(currentLanguage);
 }
 
-export function showDeleteConfirmationUI(confirmDeleteCallback) {
+export function showDeleteConfirmationUI(confirmDeleteCallback, title = "حذف", message = "هل أنت متأكد؟") {
     const dialog = document.getElementById("deleteConfirmationModal");
+    const modalTitle = dialog.querySelector('h3');
+    const modalMessage = dialog.querySelector('p');
+    modalTitle.textContent = title;
+    modalMessage.textContent = message;
+
     dialog.classList.remove("hidden");
     const confirmBtn = document.getElementById("confirmDeleteBtn");
     const newConfirmBtn = confirmBtn.cloneNode(true);
@@ -578,7 +598,7 @@ export function resetSaleForm() {
   document.getElementById("salesForm").reset();
   document.getElementById("editingSaleId").value = "";
   document.getElementById("date").valueAsDate = new Date();
-  toggleRedeemButton(false); // Hide redeem button on form reset
+  toggleRedeemButton(false);
 }
 
 export function showNotification(message, type = "info", duration = 3000) {
@@ -652,10 +672,7 @@ export function formatDate(dateString) {
   return new Date(date.getTime() + date.getTimezoneOffset() * 60000).toLocaleDateString(currentLanguage === "ar" ? "ar-EG" : "en-US", options);
 }
 
-// ui.js - استبدل الدالة القديمة بهذه
-// ui.js - قم باستبدال الدالة القديمة بالكامل بهذه النسخة المصححة
-
-export function showCustomerDetailsUI(customer, history, totalProfit, avgProfit, reminders, addTagCallback, removeTagCallback, addNoteCallback, addReminderCallback, removeReminderCallback, handleCashBackRedemption) {
+export function showCustomerDetailsUI(customer, history, totalProfit, avgProfit, reminders, addTagCallback, removeTagCallback, addNoteCallback, addReminderCallback, removeReminderCallback, handleCashBackRedemption, addBonusPointsCallback) {
     document.getElementById("modalCustomerName").textContent = customer.name;
     document.getElementById("modalCustomerWhatsapp").textContent = formatEgyptianPhoneNumber(customer.whatsappNumber);
     document.getElementById("modalCustomerTotalOrders").textContent = history.length;
@@ -677,11 +694,9 @@ export function showCustomerDetailsUI(customer, history, totalProfit, avgProfit,
       if (!customer?.whatsappNumber) {
         freshBtn.disabled = true;
         freshBtn.classList.add("opacity-50", "cursor-not-allowed");
-        freshBtn.title = "لا يوجد رقم واتساب لهذا العميل";
       } else {
         freshBtn.disabled = false;
         freshBtn.classList.remove("opacity-50", "cursor-not-allowed");
-        freshBtn.title = "إرسال رصيد النقاط عبر واتساب";
         freshBtn.addEventListener("click", (e) => {
           e.preventDefault();
           const msg = composeLoyaltyMessage(customer?.loyaltyPoints || 0);
@@ -695,31 +710,16 @@ export function showCustomerDetailsUI(customer, history, totalProfit, avgProfit,
     if (copyBtn) {
       const freshCopyBtn = copyBtn.cloneNode(true);
       copyBtn.replaceWith(freshCopyBtn);
-
-      if (!customer?.loyaltyPoints && customer?.loyaltyPoints !== 0) {
-        freshCopyBtn.disabled = true;
-        freshCopyBtn.classList.add("opacity-50", "cursor-not-allowed");
-        freshCopyBtn.title = "لا توجد نقاط لنسخها";
-      } else {
-        freshCopyBtn.disabled = false;
-        freshCopyBtn.classList.remove("opacity-50", "cursor-not-allowed");
-        freshCopyBtn.title = "نسخ رصيد النقاط";
-        freshCopyBtn.addEventListener("click", () => {
-          const msg = composeLoyaltyMessage(customer?.loyaltyPoints || 0);
-          navigator.clipboard.writeText(msg).then(() => {
-            alert("تم نسخ الرسالة إلى الحافظة ✅");
-          }).catch(() => {
-            alert("حدث خطأ أثناء النسخ ❌");
-          });
-        });
-      }
+      freshCopyBtn.addEventListener("click", () => {
+        const msg = composeLoyaltyMessage(customer?.loyaltyPoints || 0);
+        navigator.clipboard.writeText(msg).then(() => showNotification(translations[currentLanguage].copied, 'success'));
+      });
     }
 
     const cashBackBtn = document.getElementById("cashBackBtn");
     if (cashBackBtn) {
         const newCashBackBtn = cashBackBtn.cloneNode(true);
         cashBackBtn.parentNode.replaceChild(newCashBackBtn, cashBackBtn);
-
         if (customer.loyaltyPoints < 1000) {
             newCashBackBtn.disabled = true;
             newCashBackBtn.classList.add("opacity-50", "cursor-not-allowed");
@@ -729,6 +729,15 @@ export function showCustomerDetailsUI(customer, history, totalProfit, avgProfit,
             newCashBackBtn.onclick = handleCashBackRedemption;
         }
     }
+    
+    // --- ربط زر إضافة البونص ---
+    const bonusPointsBtn = document.getElementById("addBonusPointsBtn");
+    if (bonusPointsBtn) {
+        const newBonusBtn = bonusPointsBtn.cloneNode(true);
+        bonusPointsBtn.parentNode.replaceChild(newBonusBtn, bonusPointsBtn);
+        newBonusBtn.onclick = () => showBonusPointsModal(customer.whatsappNumber, addBonusPointsCallback);
+    }
+    // --- نهاية الربط ---
 
     const historyBody = document.getElementById("modalPurchaseHistory");
     historyBody.innerHTML = "";
@@ -773,12 +782,11 @@ export function hideCustomerDetailsUI() {
     document.getElementById("customerDetailsModal").classList.add("hidden");
 }
 
-// ui.js - استبدل الدالة القديمة بهذه
 export function renderCustomerTagsUI(customer, removeTagCallback) {
     const tagsContainer = document.getElementById("modalCustomerTags");
     if (!tagsContainer) return;
     
-    tagsContainer.innerHTML = ""; // Clear previous tags
+    tagsContainer.innerHTML = ""; 
     
     if (customer.tags && customer.tags.length > 0) {
         customer.tags.forEach(tag => {
@@ -796,9 +804,6 @@ export function renderCustomerTagsUI(customer, removeTagCallback) {
             badge.appendChild(removeBtn);
             tagsContainer.appendChild(badge);
         });
-    } else {
-        // You can add a placeholder if you want, e.g.:
-        // tagsContainer.textContent = "No tags yet.";
     }
 }
 export function renderCustomerNotesUI(customer) {
@@ -923,12 +928,10 @@ export function populateTagFilterDropdown(tags) {
     const select = document.getElementById('tagFilterSelect');
     if (!select) return;
 
-    // نحتفظ بالخيار الأول ("اختر علامة...") ونمسح الباقي
     const firstOption = select.options[0];
     select.innerHTML = '';
     select.appendChild(firstOption);
 
-    // نضيف العلامات الجديدة
     tags.forEach(tag => {
         const option = document.createElement('option');
         option.value = tag;
@@ -941,8 +944,7 @@ export function displayFilteredNumbers(numbers) {
     if (!textarea) return;
     textarea.value = numbers.join('\n');
 }
-// ui.js - أضف هذه الدالة في نهاية الملف
-// ui.js - استبدل دالة toggleActivityPanel القديمة بهذه
+
 export function toggleActivityPanel(show) {
     const panel = document.getElementById('activityPanel');
     const overlay = document.getElementById('activityOverlay');
@@ -958,7 +960,7 @@ export function toggleActivityPanel(show) {
         overlay.classList.add('hidden');
     }
 }
-// New: Services Management UI Functions
+
 export function populateServiceDropdown(services) {
     const select = document.getElementById('serviceType');
     if (!select) return;
@@ -1064,7 +1066,6 @@ export function resetServiceForm() {
     hideServicePanel();
 }
 
-// New: Catalog UI Functions
 export function renderCatalogServiceList(services, selectServiceCallback) {
     const listContainer = document.getElementById('catalogServiceList');
     if (!listContainer) return;
@@ -1073,20 +1074,14 @@ export function renderCatalogServiceList(services, selectServiceCallback) {
         const li = document.createElement('li');
         li.textContent = service.name;
 
-        // ---  هذا هو التعديل الجديد والمبسط ---
         li.onclick = () => {
-            // 1. ابحث عن أي عنصر مختار حاليًا وقم بإزالة التحديد منه
             const currentSelected = listContainer.querySelector('.selected');
             if (currentSelected) {
                 currentSelected.classList.remove('selected');
             }
-            // 2. أضف التحديد للعنصر الذي تم الضغط عليه
             li.classList.add('selected');
-
-            // 3. قم بتنفيذ الوظيفة الأصلية (عرض تفاصيل الخدمة)
             selectServiceCallback(service.id);
         };
-        // --- نهاية التعديل ---
 
         listContainer.appendChild(li);
     });
@@ -1146,7 +1141,7 @@ export function renderCatalogContent(service, discountMode, discountPercentage, 
                         customCheckbox.querySelector('svg').classList.add('hidden');
                     }
                     checkboxChangeCallback({
-                        id: `${service.id}-${category.name}-${item.name}`, // Unique ID for selection tracking
+                        id: `${service.id}-${category.name}-${item.name}`,
                         serviceName: service.name,
                         categoryName: category.name,
                         itemName: item.name,
@@ -1163,11 +1158,9 @@ export function renderCatalogContent(service, discountMode, discountPercentage, 
     setLanguage(currentLanguage);
 }
 
-// استبدل الدالة القديمة بهذه النسخة المحسّنة
 export function updateFloatingActionBar(count) {
     const fab = document.getElementById('floatingActionBar');
     const countSpan = document.getElementById('selectedItemsCount');
-    // سنقوم بتحديد صفحة الكتالوج لإضافة المساحة الفارغة لها
     const catalogPage = document.getElementById('catalog'); 
 
     if (!fab || !countSpan || !catalogPage) return;
@@ -1176,17 +1169,13 @@ export function updateFloatingActionBar(count) {
         countSpan.textContent = translations[currentLanguage].items_selected.replace('{count}', count);
         fab.classList.remove('hidden');
 
-        // -- الجزء الذكي الجديد --
-        // بعد أن يظهر الشريط، نقيس ارتفاعه
         setTimeout(() => {
             const barHeight = fab.offsetHeight;
-            // نضيف مساحة فارغة (padding) أسفل صفحة الكتالوج + 16 بكسل للمسافة
             catalogPage.style.paddingBottom = `${barHeight + 16}px`;
-        }, 50); // تأخير بسيط لضمان حساب الارتفاع بشكل صحيح
+        }, 50);
 
     } else {
         fab.classList.add('hidden');
-        // عندما يختفي الشريط، نزيل المساحة الفارغة
         catalogPage.style.paddingBottom = '0px';
     }
     setLanguage(currentLanguage);
@@ -1214,34 +1203,30 @@ export function toggleRedeemButton(show, points = 0) {
     }
     setLanguage(currentLanguage);
 }
-// ui.js - استبدل الدالة القديمة بهذه النسخة
-export function showRedeemPointsModal(customerData, onApplyCallback) {
+
+export function showRedeemPointsModal(customerData, onApplyCallback, rate) {
     const modal = document.getElementById("redeemPointsModal");
     const pointsInput = document.getElementById("pointsToRedeem");
     const discountDisplay = document.getElementById("discountValue");
 
     document.getElementById("currentPointsBalance").textContent = customerData.loyaltyPoints;
-
     pointsInput.value = "";
     discountDisplay.textContent = "0.00";
-    pointsInput.max = customerData.loyaltyPoints; // تحديد الحد الأقصى للنقاط
+    pointsInput.max = customerData.loyaltyPoints;
 
-    // وظيفة oninput تبقى كما هي
     pointsInput.oninput = () => {
         let enteredPoints = parseInt(pointsInput.value) || 0;
         if (enteredPoints > customerData.loyaltyPoints) {
             enteredPoints = customerData.loyaltyPoints;
             pointsInput.value = enteredPoints;
         }
-        const discount = enteredPoints / 40;
+        const discount = enteredPoints / rate;
         discountDisplay.textContent = discount.toFixed(2);
     };
 
-    // هذا هو التعديل الجوهري
     document.getElementById("applyRedeemBtn").onclick = () => {
         const pointsUsed = parseInt(pointsInput.value) || 0;
         if (pointsUsed > 0) {
-            // استدعاء الكول باك الذي تم تمريره بالنقاط المستخدمة
             onApplyCallback(pointsUsed);
         }
         modal.classList.add("hidden");
@@ -1250,15 +1235,10 @@ export function showRedeemPointsModal(customerData, onApplyCallback) {
     modal.classList.remove("hidden");
     setLanguage(currentLanguage);
 }
-// دالة جديدة لتنظيف وتنسيق أرقام الموبايلات المصرية
+
 export function formatEgyptianPhoneNumber(numberString) {
     if (!numberString || typeof numberString !== 'string') return 'N/A';
-
-    // 1. إزالة كل الأحرف والرموز ما عدا الأرقام
     const digitsOnly = numberString.replace(/\D/g, '');
-
-    // 2. التحقق من الصيغ الشائعة وإعادتها للشكل الموحد (01...)
-    // يتعامل مع أرقام مثل: 201..., 1..., 01...
     if (digitsOnly.startsWith('201') && digitsOnly.length === 12) {
         return '0' + digitsOnly.substring(2);
     }
@@ -1268,11 +1248,9 @@ export function formatEgyptianPhoneNumber(numberString) {
     if (digitsOnly.startsWith('1') && digitsOnly.length === 10) {
         return '0' + digitsOnly;
     }
-
-    // 3. إذا كان الرقم غير معروف، قم بإرجاعه كما هو لكي يتمكن المستخدم من تصحيحه
     return numberString;
 }
-// دوال جديدة للتحكم في لوحة الخدمات
+
 export function showServicePanel() {
     const panel = document.getElementById('serviceFormPanel');
     const overlay = document.getElementById('serviceFormPanelOverlay');
@@ -1287,4 +1265,36 @@ export function hideServicePanel() {
     if (!panel || !overlay) return;
     panel.classList.add('translate-x-full', 'invisible');
     overlay.classList.add('hidden');
+}
+
+// --- دالة جديدة لإظهار نافذة إضافة نقاط البونص ---
+export function showBonusPointsModal(customerId, onApplyCallback) {
+    const modal = document.getElementById('bonusPointsModal');
+    const amountInput = document.getElementById('bonusPointsAmount');
+    const reasonInput = document.getElementById('bonusPointsReason');
+    const saveBtn = document.getElementById('saveBonusPointsBtn');
+    const cancelBtn = document.getElementById('cancelBonusPointsBtn');
+
+    amountInput.value = '';
+    reasonInput.value = '';
+
+    const newSaveBtn = saveBtn.cloneNode(true);
+    saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+    newSaveBtn.onclick = () => {
+        const points = parseInt(amountInput.value);
+        const reason = reasonInput.value.trim();
+        if (isNaN(points) || points <= 0) {
+            showNotification("يرجى إدخال عدد صحيح من النقاط.", "error");
+            return;
+        }
+        onApplyCallback(customerId, points, reason);
+        modal.classList.add('hidden');
+    };
+
+    cancelBtn.onclick = () => {
+        modal.classList.add('hidden');
+    };
+    
+    modal.classList.remove('hidden');
 }
